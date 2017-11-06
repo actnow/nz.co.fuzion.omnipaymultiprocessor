@@ -45,6 +45,18 @@ return array(
     'metadata' => array(
       'is_transparent_redirect' => FALSE,
       'supports_preapproval' => TRUE,
+      // Client side parameters are credentials not passed through to the php gateway.
+      'client_side_parameters' => array('ClientSideEncryptionPublicKey'),
+      'client_side_scripts' => array(
+        array(
+          'script_file' => 'EwayClientSide.js',
+          'processor_fields' => array('signature' => 'ewayKey'),
+          'namespace' => 'eway',
+        ),
+        array(
+          'script_url' => 'https://secure.ewaypayments.com/scripts/eCrypt.js',
+        ),
+      ),
     ),
     'params' => array(
       'version' => 3,
@@ -54,6 +66,7 @@ return array(
       // DO NOT CHANGE: Labels are used as Omnipay gateway properties.
       'user_name_label' => 'Api Key',
       'password_label' => 'Password',
+      'signature_label' => 'Client side encryption public key',
       'class_name' => 'Payment_OmnipayMultiProcessor',
       'url_site_default' => 'http://unused.com',
       'url_api_default' => 'http://unused.com',

@@ -16,6 +16,9 @@ abstract class RapidDirectAbstractRequest extends AbstractRequest
 {
     public function getEncryptedCardNumber()
     {
+        if (!$this->getParameter('encryptedCardNumber') && $this->getCard() && substr($this->getCard()->getNumber(), 0, 6) === 'eCrypt') {
+            return $this->getCard()->getNumber();
+        }
         return $this->getParameter('encryptedCardNumber');
     }
 
@@ -33,6 +36,9 @@ abstract class RapidDirectAbstractRequest extends AbstractRequest
 
     public function getEncryptedCardCvv()
     {
+        if (!$this->getParameter('encryptedCardCvv') && $this->getCard() && substr($this->getCard()->getCvv(), 0, 6) === 'eCrypt') {
+          return $this->getCard()->getCvv();
+        }
         return $this->getParameter('encryptedCardCvv');
     }
 

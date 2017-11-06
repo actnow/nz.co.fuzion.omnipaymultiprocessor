@@ -182,6 +182,9 @@ class CRM_Core_Payment_OmnipayMultiProcessor extends CRM_Core_Payment_PaymentExt
    */
   public function setProcessorFields() {
     $fields = $this->getProcessorFields();
+    $clientSideFields = $this->getProcessorTypeMetadata('client_side_parameters');
+    $fields = array_diff_key($fields, array_flip($clientSideFields));
+
     try {
       foreach ($fields as $name => $value) {
         $fn = "set{$name}";
@@ -241,6 +244,49 @@ class CRM_Core_Payment_OmnipayMultiProcessor extends CRM_Core_Payment_PaymentExt
    */
   function getPreApprovalDetails($detail) {
     return $detail;
+  }
+
+  /**
+   * Add client encryption script if public key is in the signature field.
+   *
+   * By adding the public key to the eway configuration sites can enable client side encryption.
+   *
+   * https://www.eway.com.au/developers/api/client-side-encryption
+   *
+   * @param CRM_Core_Form $form
+   *
+   * @return bool
+   *   Should form building stop at this point?
+   */
+  public function buildForm(&$form) {
+    $scripts = $this->getProcessorTypeMetadata('client_side_scripts');
+    if (!$scripts) {
+      return FALSE;
+    }
+    $region = (CRM_Core_Resources::isAjaxMode() && $this->isBackOffice()) ? 'ajax-snippet' : 'page-footer';
+    $region = 'billing-block-post';
+    $weight = 5;
+
+    foreach ($scripts as $script) {
+      $processorFields = array();
+      if (!empty($script['processor_fields'])) {
+        foreach ($script['processor_fields'] as $processorFieldName => $mappedTo) {
+          $processorFields = array($mappedTo => $this->_paymentProcessor[$processorFieldName]);
+        }
+        // @todo - doesn't work for back-office popup as this is not the selector for that.
+        // but at front end needs to be this even if 'summoned'
+        $processorFields['formSelector'] = '#crm-main-content-wrapper form';
+        CRM_Core_Resources::singleton()->addSetting(array($script['namespace'] => $processorFields));
+      }
+      if (isset($script['script_url'])) {
+        CRM_Core_Resources::singleton()->addScriptUrl($script['script_url'], $weight, $region);
+      }
+      if (isset($script['script_file'])) {
+        CRM_Core_Resources::singleton()->addScriptFile('nz.co.fuzion.omnipaymultiprocessor', 'js/' . $script['script_file'], $weight, $region);
+      }
+      $weight = $weight + 5;
+    }
+    return FALSE;
   }
 
   /**
@@ -861,6 +907,7 @@ class CRM_Core_Payment_OmnipayMultiProcessor extends CRM_Core_Payment_PaymentExt
    * @return bool
    */
   protected function supportsPreApproval() {
+    return FALSE;
     return $this->getProcessorTypeMetadata('supports_preapproval');
   }
 
@@ -1069,9 +1116,28 @@ class CRM_Core_Payment_OmnipayMultiProcessor extends CRM_Core_Payment_PaymentExt
    */
   public function validatePaymentInstrument($values, &$errors) {
     CRM_Core_Form::validateMandatoryFields($this->getMandatoryFields(), $values, $errors);
-    if ($this->_paymentProcessor['payment_type'] == 1) {
+    if ($this->hasCreditCardValues($values)) {
       CRM_Core_Payment_Form::validateCreditCard($values, $errors, $this->_paymentProcessor['id']);
     }
+  }
+
+  /**
+   * Does the form have credit card values on it.
+   *
+   * If they are not present or have been transformed return false.
+   *
+   * @param $values
+   * @return bool
+   */
+  protected function hasCreditCardValues($values) {
+    if ($this->_paymentProcessor['payment_type'] !== 1 || empty($values['credit_card_number'])) {
+      return FALSE;
+    }
+    // temporary eway hack while I decide how to denote this.
+    if (substr($values['credit_card_number'], 0, 6) === 'eCrypt') {
+      return FALSE;
+    }
+    return TRUE;
   }
 
 }
