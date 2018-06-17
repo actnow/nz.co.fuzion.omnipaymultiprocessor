@@ -83,7 +83,6 @@ return array(
                    'amount' : calculateTotalFee(),
                  },
                  ).done(function(result) {
-                 
                    token = result['values'][0]['token'];
                    resolve(token);
                 })
@@ -92,8 +91,11 @@ return array(
             },
 
             onAuthorize: function(data, actions) {
-            console.log('auth called');
             console.log(data);
+
+            CRM.$('.crm-submit-buttons', $('#billing-payment-block').closest('form')).show();
+            window.location.replace(data['returnUrl']);
+            //orderID
                 /* Execute the payment here */
                 // @todo - do we need to do this? Feel like we will confirm via php for our flow.
             }
