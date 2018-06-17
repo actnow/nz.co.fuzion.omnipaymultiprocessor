@@ -80,8 +80,7 @@ return array(
               return new paypal.Promise(function(resolve, reject) {
                  CRM.api3('PaymentProcessor', 'preapprove', {
                    'payment_processor_id' : CRM.vars.omnipay.paymentProcessorId,
-                   // @todo - hard coded for now...
-                   'amount' : 10
+                   'amount' : calculateTotalFee(),
                  },
                  ).done(function(result) {
                  
